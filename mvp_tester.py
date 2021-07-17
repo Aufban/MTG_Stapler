@@ -1,15 +1,23 @@
-from bs4 import BeautifulSoup as soup
-from urllib.request import urlopen as uReq
-from urllib.request import Request
+import requests
 import time
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
-import numpy as np
-import os
+from tqdm import tqdm
 
-#TODO add scryfall API
-#TODO add card type_line
-#TODO add color_identity
+def get_card_info(card_name):
+    time.sleep(0.1)
+    uri = 'https://api.scryfall.com/cards/named?exact='+card_name
+    response = requests.get(uri)
+    json_response = response.json()
+    return json_response
+
+df = pd.read_json('results/competitiveCards_full.json')
+# df = pd.DataFrame([{'Card Name':'Black Lotus', 'asdf':123},{'Card Name':'Snap', 'asdf':123}])
+df['Type'] = 'Not Found'
+df['Color Identity'] = 'Not Found'
+df['USD'] = 'Not Found'
+for idx, row in tqdm(df.iterrows(), total=df.shape[0]):
+    card_info = get_card_info(row['Card Name'])
+    df.at[idx,'Type'] = card_info.get('type_line')
+    df.at[idx,'Color Identity'] = card_info.get('color_identity')
+    df.at[idx,'USD'] = card_info.get('prices').get('usd')
+df.to_json('results/competitiveCards_full_scry.json', orient='records')

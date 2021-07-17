@@ -96,7 +96,7 @@ df_12 = pd.merge(df_1, df_2, on='Card Name')
 
 card_vc = df['Card Name'].value_counts()
 card_vc = card_vc.reset_index()
-card_vc.rename( columns={'index' :'Card Name', 'Card Name':'Ocurrences'}, inplace=True )#columns names
+card_vc.rename( columns={'index' :'Card Name', 'Card Name':'Occurrences'}, inplace=True )#columns names
 card_vc.to_json('results/competitiveCards.json', orient='records')
 card_vc.to_csv('results/competitive_cards.csv')
 
