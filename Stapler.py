@@ -5,10 +5,15 @@ import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException,TimeoutException
 import pandas as pd
 import numpy as np
-import os
 import re
+import os
+from tqdm import tqdm
 
 myurl =  'https://cedh-decklist-database.com'
 cards = [] # initializes list of all cards
@@ -23,33 +28,79 @@ htmls = []
 for c in containers:
     if c.get_text().strip() == 'COMPETITIVE':
         x = c.parent.parent.find("ul", {"class": "ddb-decklists"})
-        htmls.append(x.a["href"])
+        lis = x.findAll('li')
+        for li in lis:
+            htmls.append(li.a["href"])
 
-#TODO: Change to regular expression
 #cleaning moxfield primer lists
-htmls = list(map(lambda x: x.split('/primer')[0],htmls))
+def second_group(m):
+    return m.group(1)
+htmls = list(map(lambda x: re.sub(r'(.*)/$|(.*)/primer$',second_group,x ), htmls))
 
 # Scrapper of decklists
 chromedriver_path=os.path.join(os.getcwd(), "chromedriver.exe")
 options = Options()
-options.set_headless(headless=True)
-for decklist in htmls:
+options.headless = True
+options.add_experimental_option('excludeSwitches', ['enable-logging']) #remove logging message
+driver = webdriver.Chrome(chromedriver_path, options= options)
+for decklist in tqdm(htmls):
     if 'moxfield' in decklist: # checks if its a moxfield deck
-        driver = webdriver.Chrome(chromedriver_path, options= options)
         driver.get(decklist)
-        time.sleep(3) #if you want to wait 3 seconds for the page to load
+        #time.sleep(5) #if you want to wait 3 seconds for the page to load
+        try:
+            myElem = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'viewMode')))
+        except TimeoutException:
+            print ("Loading took too much time!",decklist)
+            continue
+        view_mode = driver.find_element_by_id('viewMode')
+        mode = view_mode.get_attribute('value')
         page_source = driver.page_source
-        driver.close()
         page_soup = soup(page_source, 'html.parser')
-        containers = page_soup.findAll("tr",{"class": "table-deck-row"})
-        for c in containers:
-            cards.append( c.a.get_text())
-        cards = cards[:len(cards)-8]
+        title = page_soup.find("span", {"class": "deckheader-name"}).get_text()
+        deck_info = {'Link': decklist, 'Title':title }
+        if mode == 'table':
+            containers = page_soup.findAll("tr",{"class": "table-deck-row"})
+            deck_cards = []
+            #TODO: Find only decklist cards
+            for c in containers:
+                c_name = {'Card Name': c.a.get_text()}
+                deck_cards.append(c_name)
+            deck_info['Cards'] = deck_cards
+            cards.append(deck_info)
+        elif mode == 'visual':
+            containers = page_soup.findAll("div",{"class": "decklist-card-phantomsearch"})
+            deck_cards = []
+            #TODO: Find only decklist cards
+            for c in containers:
+                c_name = {'Card Name': c.get_text()}
+                deck_cards.append(c_name)
+            deck_info['Cards'] = deck_cards
+            cards.append(deck_info)
+        elif mode == 'stacks':
+            containers = page_soup.findAll("div",{"class": "img-card-stack"})
+            deck_cards = []
+            #TODO: Find only decklist cards
+            for c in containers:
+                c_name = {'Card Name': c.img['alt']}
+                deck_cards.append(c_name)
+            deck_info['Cards'] = deck_cards
+            cards.append(deck_info)
+driver.close()
+#dataframe with all cards
+df = pd.json_normalize(cards,
+    record_path='Cards', meta=['Link', 'Title'])
+#convert dataframe of decklists with cards to a dataframe of cards with decklists
+df_1 = df.groupby('Card Name')['Title'].apply(list).reset_index()
+df_2 = df.groupby('Card Name')['Link'].apply(list).reset_index()
+df_12 = pd.merge(df_1, df_2, on='Card Name')
 
-card_data = pd.DataFrame({'Card Name': cards}) # creates a data frame of all cards
-card_vc = pd.DataFrame(card_data.value_counts())
-card_vc.rename( columns={0 :'Occurrences'}, inplace=True ) # sets coorrect column names
+card_vc = df['Card Name'].value_counts()
 card_vc = card_vc.reset_index()
+card_vc.rename( columns={'index' :'Card Name', 'Card Name':'Ocurrences'}, inplace=True )#columns names
 card_vc.to_json('results/competitiveCards.json', orient='records')
 card_vc.to_csv('results/competitive_cards.csv')
+
+#export full data
+full_cards = pd.merge(df_12,card_vc, on = 'Card Name')
+full_cards.to_json('results/competitiveCards_full.json', orient='records')
 
