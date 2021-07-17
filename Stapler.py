@@ -1,7 +1,5 @@
 from bs4 import BeautifulSoup as soup
 from urllib.request import urlopen as uReq
-from urllib.request import Request
-import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
@@ -10,19 +8,16 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException,TimeoutException
 import pandas as pd
-import numpy as np
 import re
 import os
 from tqdm import tqdm
 
-myurl =  'https://cedh-decklist-database.com'
-cards = [] # initializes list of all cards
-
+cedh_database =  'https://cedh-decklist-database.com'
 #Getting list of decklists
-client = uReq(myurl) # opening connection 
+client = uReq(cedh_database) # opening connection
 page_html = client.read() # content to variable
-client.close() # closes connection 
-page_soup = soup(page_html, 'html.parser') # html parsing 
+client.close() # closes connection
+page_soup = soup(page_html, 'html.parser') # html parsing
 containers = page_soup.findAll("div",{"class": "ddb-section"})
 htmls = []
 for c in containers:
@@ -38,15 +33,15 @@ def second_group(m):
 htmls = list(map(lambda x: re.sub(r'(.*)/$|(.*)/primer$',second_group,x ), htmls))
 
 # Scrapper of decklists
+cards = [] # initializes list of all cards
 chromedriver_path=os.path.join(os.getcwd(), "chromedriver.exe")
 options = Options()
 options.headless = True
 options.add_experimental_option('excludeSwitches', ['enable-logging']) #remove logging message
 driver = webdriver.Chrome(chromedriver_path, options= options)
 for decklist in tqdm(htmls):
-    if 'moxfield' in decklist: # checks if its a moxfield deck
+    if 'moxfield' in decklist:
         driver.get(decklist)
-        #time.sleep(5) #if you want to wait 3 seconds for the page to load
         try:
             myElem = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'viewMode')))
         except TimeoutException:
@@ -89,18 +84,20 @@ driver.close()
 #dataframe with all cards
 df = pd.json_normalize(cards,
     record_path='Cards', meta=['Link', 'Title'])
+df = df.drop_duplicates()
 #convert dataframe of decklists with cards to a dataframe of cards with decklists
 df_1 = df.groupby('Card Name')['Title'].apply(list).reset_index()
 df_2 = df.groupby('Card Name')['Link'].apply(list).reset_index()
-df_12 = pd.merge(df_1, df_2, on='Card Name')
+df_12 = pd.merge(df_1, df_2, on='Card Name', how='inner')
 
 card_vc = df['Card Name'].value_counts()
 card_vc = card_vc.reset_index()
 card_vc.rename( columns={'index' :'Card Name', 'Card Name':'Occurrences'}, inplace=True )#columns names
+
+full_cards = pd.merge(df_12,card_vc, on = 'Card Name')
+
+#Exports
 card_vc.to_json('results/competitiveCards.json', orient='records')
 card_vc.to_csv('results/competitive_cards.csv')
-
-#export full data
-full_cards = pd.merge(df_12,card_vc, on = 'Card Name')
 full_cards.to_json('results/competitiveCards_full.json', orient='records')
 

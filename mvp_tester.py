@@ -11,7 +11,6 @@ def get_card_info(card_name):
     return json_response
 
 df = pd.read_json('results/competitiveCards_full.json')
-# df = pd.DataFrame([{'Card Name':'Black Lotus', 'asdf':123},{'Card Name':'Snap', 'asdf':123}])
 df['Type'] = 'Not Found'
 df['Color Identity'] = 'Not Found'
 df['USD'] = 'Not Found'

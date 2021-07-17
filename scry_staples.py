@@ -26,6 +26,8 @@ for idx, row in tqdm(cedh_scry[cedh_scry['_merge']=='left_only'].iterrows(), tot
     cedh_scry.at[idx,'prices'] = card_info.get('prices')
     cedh_scry.at[idx,'reserved'] = card_info.get('reserved')
 
+
+#FIXME: fix rename is not working
 cedh_scry.rename({
     'Card Name': 'scrapName',
     'Title':'deckNames',
