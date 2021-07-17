@@ -28,7 +28,7 @@ for idx, row in tqdm(cedh_scry[cedh_scry['_merge']=='left_only'].iterrows(), tot
 
 
 #FIXME: fix rename is not working
-cedh_scry.rename({
+cedh_scry.rename(columns={
     'Card Name': 'scrapName',
     'Title':'deckNames',
     'Link': 'deckLinks',
@@ -39,5 +39,6 @@ cedh_scry.rename({
     'reserved': 'reserved',
     'prices': 'prices',
     '_merge': 'mergedSource'
-})
+}, inplace=True)
+
 cedh_scry.to_json('results/cedh_scry.json', orient='records')
