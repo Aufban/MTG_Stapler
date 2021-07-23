@@ -97,7 +97,7 @@ card_vc.rename( columns={'index' :'Card Name', 'Card Name':'Occurrences'}, inpla
 full_cards = pd.merge(df_12,card_vc, on = 'Card Name')
 
 #Exports
-card_vc.to_json('results/competitiveCards.json', orient='records')
-card_vc.to_csv('results/competitive_cards.csv')
+# card_vc.to_json('results/competitiveCards.json', orient='records')
+# card_vc.to_csv('results/competitive_cards.csv')
 full_cards.to_json('results/competitiveCards_full.json', orient='records')
 
