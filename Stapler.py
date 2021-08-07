@@ -38,7 +38,7 @@ chromedriver_path=os.path.join(os.getcwd(), "chromedriver.exe")
 options = Options()
 options.headless = True
 options.add_experimental_option('excludeSwitches', ['enable-logging']) #remove logging message
-driver = webdriver.Chrome(chromedriver_path, options= options)
+driver = webdriver.Chrome(executable_path=chromedriver_path, options= options)
 for decklist in tqdm(htmls):
     if 'moxfield' in decklist:
         driver.get(decklist)

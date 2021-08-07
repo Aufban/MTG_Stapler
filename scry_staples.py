@@ -37,7 +37,29 @@ for idx, row in tqdm(cedh_scry[cedh_scry['_merge']=='left_only'].iterrows(), tot
     cedh_scry.at[idx,'reserved'] = card_info.get('reserved')
     cedh_scry.at[idx,'mana_cost'] = card_info.get('mana_cost')
 
-cedh_scry['type'] = cedh_scry['type_line'].apply(lambda x: re.sub(r'.*(Creature|Land|Artifact|Instant|Sorcery|Planeswalker|Enchantment).*—*\/?',second_group,x))
+def type_cleaner(x):
+    if '//' in x:
+        x = x.split('//')[0]
+    if '—' in x:
+        x = x.split('—')[0]
+    if 'Creature' in x:
+        return 'Creature'
+    elif 'Land' in x:
+        return 'Land'
+    elif 'Planeswalker' in x:
+        return 'Planeswalker'
+    elif 'Artifact' in x:
+        return 'Artifact'
+    elif 'Enchantment' in x:
+        return 'Enchantment'
+    elif 'Instant' in x:
+        return 'Instant'
+    elif 'Sorcery' in  x:
+        return 'Sorcery'
+    else:
+        return 'Unknown'
+
+cedh_scry['type'] = cedh_scry['type_line'].apply(type_cleaner)
 cedh_scry['color_identity'] = cedh_scry['color_identity'].apply(lambda x: ''.join([str(i) for i in x]))
 cedh_scry['color_identity'].replace('', 'C', inplace=True)
 
